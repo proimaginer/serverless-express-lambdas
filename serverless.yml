@@ -1,0 +1,73 @@
+service: erverless-express-lambdas
+frameworkVersion: '3'
+
+# https://www.serverless.com/framework/docs/deprecations/#NEW_VARIABLES_RESOLVER
+useDotenv: true
+
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-offline
+  - serverless-latest-layer-version
+
+custom:
+  schedule:
+    rate: rate(5 minutes)
+    enabled: true
+    description: 'Health Checker'
+    input:
+      healthCheck: true
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage}
+  region: ap-northeast-2
+  memorySize: 1024 # optional, in MB, default is 1024
+  timeout: 10 # optional, in seconds, default is 10
+  vpc:
+    securityGroupIds:
+      - ${env:SECURITY_GROUP_IDS}
+    subnetIds:
+      - ${env:SUBNET_IDS_A}
+      - ${env:SUBNET_IDS_B}
+  deploymentBucket:
+    name: serverless-nodejs-deploy-source
+    serverSideEncryption: AES256
+  deploymentPrefix: serverless
+  layers:
+    - ${env:AWS_LAMBDA_LAYER_ARN}
+  httpApi:
+    cors: true
+
+functions:
+  apis:
+    handler: src/index.handler
+    package:
+      patterns:
+        - 'src/**'
+    events:
+      - schedule: ${self:custom.schedule}
+      - httpApi:
+          method: GET
+          path: /posts
+
+package:
+  individually: true
+  patterns:
+    - '!.git/**'
+    - '!.gitignore'
+    - '!.DS_Store'
+    - '!npm-debug.log'
+    - '!.serverless/**'
+    - '!.serverless_plugins/**'
+    - '!.eslintrc.js'
+    - '!.prettierrc.js'
+    - '!.idea/**'
+    - '!bitbucket-pipelines.yml'
+    - '!package.json'
+    - '!package-lock.json'
+    - '!README.md'
+    - '!node_modules/**'
+    - '!test/**'
+    - '!layers/**'
+    - '!src/**'
